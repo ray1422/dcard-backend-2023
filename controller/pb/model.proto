@@ -1,0 +1,53 @@
+syntax = "proto3";
+option go_package = "github.com/ray1422/dcard-backend-2023/controller/pb";
+package pb;
+
+service ListService {
+    rpc CreateList(CreateListRequest) returns (CreateListReply){}
+    rpc SetList(stream SetListRequest) returns (stream SetListReply) {}
+    rpc SetListVersion(SetListVersionRequest) returns (SetListVersionReply) {}
+}
+message CreateListRequest {
+    string list_name = 1;
+}
+message CreateListReply {
+    enum statusT{
+        OK = 0;
+        DUPLICATED_KEY = 1;
+        INTERNAL_ERROR = 2;
+    }
+    statusT status = 1;
+}
+
+message SetListRequest {
+    uint32 list_id = 1;
+    uint32 version = 2;
+    repeated Node nodes = 3;
+}
+message Node {
+    uint32 order = 1;
+    uint32 article_id = 4;
+}
+
+message SetListReply {
+    enum statusT{
+        OK = 0;
+        INTERNAL_ERROR = 1;
+    }
+    statusT status = 1;
+}
+
+message SetListVersionRequest {
+    uint32 list_id = 1;
+    uint32 version = 2;
+}
+
+message SetListVersionReply {
+    enum statusT{
+        OK = 0;
+        NOT_FOUND = 1;
+        INTERNAL_ERROR = 2;
+    }
+    statusT status = 1;
+}
+

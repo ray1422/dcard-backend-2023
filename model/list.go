@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"github.com/pilagod/gorm-cursor-paginator/v2/cursor"
+	"github.com/pilagod/gorm-cursor-paginator/v2/paginator"
 	"github.com/ray1422/dcard-backend-2023/utils"
+	"github.com/ray1422/dcard-backend-2023/utils/db"
 	"gorm.io/gorm"
 )
 
@@ -89,4 +91,62 @@ func (article Article) Serialize() ArticleSerializer {
 		Title:   article.Title,
 		Content: article.Content,
 	}
+}
+
+// GetListNodes nodes of the list
+func GetListNodes(listID uint, version uint, nextCursor string) ([]ListNode, cursor.Cursor, error) {
+	nodes := []ListNode{}
+	cursor := cursor.Cursor{}
+	if nextCursor != "" {
+		cursor.After = &nextCursor
+	}
+	pg := createListNodePaginator(cursor, paginator.ASC, nil)
+	// query := `
+	// 	SELECT articles.id, list_nodes.node_order
+	// 	FROM list_nodes
+	// 	INNER JOIN articles ON (articles.id = list_nodes.article_id)
+	// 	WHERE list_nodes.list_id = ? AND list_nodes.version = ?
+	// `
+	stmt := db.GormDB().
+		Select([]string{"list_nodes.node_order"}).
+		InnerJoins("Article", db.GormDB().Select([]string{"id", "title", "content"})).
+		Where("list_id = ?", listID).Where("version = ?", version)
+	result, cursor, err := pg.Paginate(stmt, &nodes)
+	if err != nil {
+		return nil, cursor, err
+	}
+	if result.Error != nil {
+		return nil, cursor, result.Error
+	}
+	return nodes, cursor, nil
+
+}
+
+func createListNodePaginator(
+	cursor paginator.Cursor,
+	order paginator.Order,
+	limit *int,
+) *paginator.Paginator {
+	opts := []paginator.Option{
+		&paginator.Config{
+			Keys:  []string{"NodeOrder", "ID"},
+			Limit: 10,
+			Order: order,
+		},
+	}
+	if limit != nil {
+		opts = append(opts, paginator.WithLimit(*limit))
+	}
+	if cursor.After != nil {
+		opts = append(opts, paginator.WithAfter(*cursor.After))
+	}
+	if cursor.Before != nil {
+		opts = append(opts, paginator.WithBefore(*cursor.Before))
+	}
+	return paginator.New(opts...)
+}
+
+// InsertNodes inserts nodes.
+func InsertNodes(nodes []ListNode) error {
+	return db.GormDB().Create(nodes).Error
 }

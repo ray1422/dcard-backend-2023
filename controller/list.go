@@ -2,13 +2,18 @@ package controller
 
 import (
 	"errors"
+	"io"
+	"log"
+	"net"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/pilagod/gorm-cursor-paginator/v2/cursor"
-	"github.com/pilagod/gorm-cursor-paginator/v2/paginator"
+	"github.com/ray1422/dcard-backend-2023/controller/pb"
 	"github.com/ray1422/dcard-backend-2023/model"
-	"github.com/ray1422/dcard-backend-2023/utils/db"
+	"github.com/ray1422/dcard-backend-2023/utils"
+	"google.golang.org/grpc"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -28,7 +33,7 @@ func listHandler(c *gin.Context) {
 		return
 	}
 	cursorStr := c.Query("next")
-	listNodes, cursor, err := list(uint(listID), uint(version), cursorStr)
+	listNodes, cursor, err := model.GetListNodes(uint(listID), uint(version), cursorStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Status(404)
@@ -42,55 +47,58 @@ func listHandler(c *gin.Context) {
 	c.JSON(200, articles)
 }
 
-// List nodes of the list
-func list(listID uint, version uint, nextCursor string) ([]model.ListNode, cursor.Cursor, error) {
-	nodes := []model.ListNode{}
-	cursor := cursor.Cursor{}
-	if nextCursor != "" {
-		cursor.After = &nextCursor
-	}
-	pg := createListNodePaginator(cursor, paginator.ASC, nil)
-	// query := `
-	// 	SELECT articles.id, list_nodes.node_order
-	// 	FROM list_nodes
-	// 	INNER JOIN articles ON (articles.id = list_nodes.article_id)
-	// 	WHERE list_nodes.list_id = ? AND list_nodes.version = ?
-	// `
-	stmt := db.GormDB().
-		Select([]string{"list_nodes.node_order"}).
-		InnerJoins("Article", db.GormDB().Select([]string{"id", "title", "content"})).
-		Where("list_id = ?", listID).Where("version = ?", version)
-	result, cursor, err := pg.Paginate(stmt, &nodes)
-	if err != nil {
-		return nil, cursor, err
-	}
-	if result.Error != nil {
-		return nil, cursor, result.Error
-	}
-	return nodes, cursor, nil
-
+// ListGRPCServer is the server API for ListGRPCServer service
+type ListGRPCServer struct {
+	pb.UnimplementedListServiceServer
 }
 
-func createListNodePaginator(
-	cursor paginator.Cursor,
-	order paginator.Order,
-	limit *int,
-) *paginator.Paginator {
-	opts := []paginator.Option{
-		&paginator.Config{
-			Keys:  []string{"NodeOrder", "ID"},
-			Limit: 10,
-			Order: order,
-		},
+// SetList set list
+func (server *ListGRPCServer) SetList(stream pb.ListService_SetListServer) error {
+	// TODO
+	for u, err := stream.Recv(); ; u, err = stream.Recv() {
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		nodesRPC := u.GetNodes()
+		nodes := utils.Map(func(node *pb.Node) model.ListNode {
+			// shouldn't happen
+			// if node == nil {
+			// 	return nil
+			// }
+			return model.ListNode{
+				Version:   u.Version,
+				ListID:    u.ListId,
+				CreatedAt: time.Now(),
+				NodeOrder: node.Order,
+				ArticleID: int(node.ArticleId),
+			}
+		}, nodesRPC)
+
+		err := model.InsertNodes(nodes)
+		if err != nil {
+			stream.Send(&pb.SetListReply{
+				Status: pb.SetListReply_INTERNAL_ERROR,
+			})
+			log.Println("failed to write list_nodes to db:", err)
+		} else {
+			err = stream.Send(&pb.SetListReply{
+				Status: pb.SetListReply_OK,
+			})
+			if err != nil {
+				return err
+			}
+		}
 	}
-	if limit != nil {
-		opts = append(opts, paginator.WithLimit(*limit))
-	}
-	if cursor.After != nil {
-		opts = append(opts, paginator.WithAfter(*cursor.After))
-	}
-	if cursor.Before != nil {
-		opts = append(opts, paginator.WithBefore(*cursor.Before))
-	}
-	return paginator.New(opts...)
+
+	return nil
+}
+
+// listenGRPC expected to be called by register
+func listenGRPC(listener net.Listener) error {
+	grpcSrv := grpc.NewServer()
+	pb.RegisterListServiceServer(grpcSrv, &ListGRPCServer{})
+	err := grpcSrv.Serve(listener)
+	return err
 }
