@@ -1,6 +1,9 @@
 package model
 
 import (
+	"errors"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/pilagod/gorm-cursor-paginator/v2/cursor"
@@ -9,6 +12,9 @@ import (
 	"github.com/ray1422/dcard-backend-2023/utils/db"
 	"gorm.io/gorm"
 )
+
+// ErrDuplicateKeyError DuplicateKeyError
+var ErrDuplicateKeyError = errors.New("duplicate key")
 
 // Serializable Serializable
 type Serializable[t any] interface {
@@ -54,6 +60,62 @@ type ListNode struct {
 	CreatedAt time.Time `gorm:"index"`
 	ArticleID int
 	Article   Article `gorm:"foreignKey:ArticleID"`
+}
+
+// NewList creates list
+func NewList(key string) (uint, error) {
+	list := List{
+		Key: key,
+	}
+	err := db.GormDB().Create(&list).Error
+	// pgErr := &pgconn.PgError{}
+	if err != nil {
+		log.Println("failed to create list:", err)
+		// not sure what's wrong with pgconn.PgError{}.
+		// It seems GORM uses an incompatible version of pgconn that I can't cast the error and catch the error code.
+		// temporary catch by error message string lol
+		if strings.HasPrefix(err.Error(), "ERROR: duplicate key") {
+			return 0, ErrDuplicateKeyError
+		}
+		return 0, errors.New("internal error")
+	}
+	return list.ID, nil
+}
+
+// DeleteList deletes list by ID
+func DeleteList(id uint) error {
+	db := db.GormDB().Delete(&List{
+		ID: id,
+	})
+	if db.Error != nil {
+		return db.Error
+	}
+	if db.RowsAffected < 1 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+// SetListVersion sets list's version
+func SetListVersion(listID uint, listVersion uint32) error {
+	db := db.GormDB().Model(&List{}).Where("id", listID).Update("version", listVersion)
+	if db.Error != nil {
+		return db.Error
+	}
+	if db.RowsAffected < 1 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+// FindListByKey Find List By Key
+func FindListByKey(key string) (*List, error) {
+	list := List{}
+	err := db.GormDB().Take(&list, "key = ?", key).Error
+	if err != nil {
+		return nil, err
+	}
+	return &list, nil
 }
 
 // Serialize ListNode to ArticleSerializer
@@ -118,6 +180,7 @@ func GetListNodes(listID uint, version uint, nextCursor string) ([]ListNode, cur
 	if result.Error != nil {
 		return nil, cursor, result.Error
 	}
+
 	return nodes, cursor, nil
 
 }

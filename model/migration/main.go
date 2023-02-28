@@ -13,7 +13,7 @@ import (
 func Migrate() (err error) {
 	type List struct {
 		ID      uint   `gorm:"primarykey" json:"id"`
-		Key     string `json:"key" gorm:"index"`
+		Key     string `json:"key" gorm:"uniqueIndex"`
 		Version uint32
 	}
 

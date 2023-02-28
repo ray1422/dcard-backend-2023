@@ -22,9 +22,12 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ListServiceClient interface {
+	Head(ctx context.Context, in *HeadRequest, opts ...grpc.CallOption) (*HeadReply, error)
+	DeleteList(ctx context.Context, in *DeleteListRequest, opts ...grpc.CallOption) (*DeleteListReply, error)
 	CreateList(ctx context.Context, in *CreateListRequest, opts ...grpc.CallOption) (*CreateListReply, error)
 	SetList(ctx context.Context, opts ...grpc.CallOption) (ListService_SetListClient, error)
 	SetListVersion(ctx context.Context, in *SetListVersionRequest, opts ...grpc.CallOption) (*SetListVersionReply, error)
+	DeleteListNodeBefore(ctx context.Context, in *DeleteListNodeBeforeRequest, opts ...grpc.CallOption) (*DeleteListNodeBeforeReply, error)
 }
 
 type listServiceClient struct {
@@ -33,6 +36,24 @@ type listServiceClient struct {
 
 func NewListServiceClient(cc grpc.ClientConnInterface) ListServiceClient {
 	return &listServiceClient{cc}
+}
+
+func (c *listServiceClient) Head(ctx context.Context, in *HeadRequest, opts ...grpc.CallOption) (*HeadReply, error) {
+	out := new(HeadReply)
+	err := c.cc.Invoke(ctx, "/pb.ListService/Head", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listServiceClient) DeleteList(ctx context.Context, in *DeleteListRequest, opts ...grpc.CallOption) (*DeleteListReply, error) {
+	out := new(DeleteListReply)
+	err := c.cc.Invoke(ctx, "/pb.ListService/DeleteList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *listServiceClient) CreateList(ctx context.Context, in *CreateListRequest, opts ...grpc.CallOption) (*CreateListReply, error) {
@@ -84,13 +105,25 @@ func (c *listServiceClient) SetListVersion(ctx context.Context, in *SetListVersi
 	return out, nil
 }
 
+func (c *listServiceClient) DeleteListNodeBefore(ctx context.Context, in *DeleteListNodeBeforeRequest, opts ...grpc.CallOption) (*DeleteListNodeBeforeReply, error) {
+	out := new(DeleteListNodeBeforeReply)
+	err := c.cc.Invoke(ctx, "/pb.ListService/DeleteListNodeBefore", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ListServiceServer is the server API for ListService service.
 // All implementations must embed UnimplementedListServiceServer
 // for forward compatibility
 type ListServiceServer interface {
+	Head(context.Context, *HeadRequest) (*HeadReply, error)
+	DeleteList(context.Context, *DeleteListRequest) (*DeleteListReply, error)
 	CreateList(context.Context, *CreateListRequest) (*CreateListReply, error)
 	SetList(ListService_SetListServer) error
 	SetListVersion(context.Context, *SetListVersionRequest) (*SetListVersionReply, error)
+	DeleteListNodeBefore(context.Context, *DeleteListNodeBeforeRequest) (*DeleteListNodeBeforeReply, error)
 	mustEmbedUnimplementedListServiceServer()
 }
 
@@ -98,6 +131,12 @@ type ListServiceServer interface {
 type UnimplementedListServiceServer struct {
 }
 
+func (UnimplementedListServiceServer) Head(context.Context, *HeadRequest) (*HeadReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Head not implemented")
+}
+func (UnimplementedListServiceServer) DeleteList(context.Context, *DeleteListRequest) (*DeleteListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteList not implemented")
+}
 func (UnimplementedListServiceServer) CreateList(context.Context, *CreateListRequest) (*CreateListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateList not implemented")
 }
@@ -106,6 +145,9 @@ func (UnimplementedListServiceServer) SetList(ListService_SetListServer) error {
 }
 func (UnimplementedListServiceServer) SetListVersion(context.Context, *SetListVersionRequest) (*SetListVersionReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetListVersion not implemented")
+}
+func (UnimplementedListServiceServer) DeleteListNodeBefore(context.Context, *DeleteListNodeBeforeRequest) (*DeleteListNodeBeforeReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteListNodeBefore not implemented")
 }
 func (UnimplementedListServiceServer) mustEmbedUnimplementedListServiceServer() {}
 
@@ -118,6 +160,42 @@ type UnsafeListServiceServer interface {
 
 func RegisterListServiceServer(s grpc.ServiceRegistrar, srv ListServiceServer) {
 	s.RegisterService(&ListService_ServiceDesc, srv)
+}
+
+func _ListService_Head_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HeadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListServiceServer).Head(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.ListService/Head",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListServiceServer).Head(ctx, req.(*HeadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListService_DeleteList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListServiceServer).DeleteList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.ListService/DeleteList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListServiceServer).DeleteList(ctx, req.(*DeleteListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ListService_CreateList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -182,6 +260,24 @@ func _ListService_SetListVersion_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ListService_DeleteListNodeBefore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteListNodeBeforeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListServiceServer).DeleteListNodeBefore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.ListService/DeleteListNodeBefore",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListServiceServer).DeleteListNodeBefore(ctx, req.(*DeleteListNodeBeforeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ListService_ServiceDesc is the grpc.ServiceDesc for ListService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,12 +286,24 @@ var ListService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ListServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Head",
+			Handler:    _ListService_Head_Handler,
+		},
+		{
+			MethodName: "DeleteList",
+			Handler:    _ListService_DeleteList_Handler,
+		},
+		{
 			MethodName: "CreateList",
 			Handler:    _ListService_CreateList_Handler,
 		},
 		{
 			MethodName: "SetListVersion",
 			Handler:    _ListService_SetListVersion_Handler,
+		},
+		{
+			MethodName: "DeleteListNodeBefore",
+			Handler:    _ListService_DeleteListNodeBefore_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
