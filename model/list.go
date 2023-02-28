@@ -48,8 +48,11 @@ func SerializeCursorPagedItems[t any, u Serializable[t]](items []u, cursor curso
 type List struct {
 	ID      uint   `gorm:"primarykey" json:"id"`
 	Key     string `json:"key" gorm:"index"`
-	Version uint32
+	Version uint32 `json:"version"`
 }
+
+// ListSerializer ListSerializer
+type ListSerializer List
 
 // ListNode is the base class expected to be extended by other model
 type ListNode struct {
@@ -80,6 +83,13 @@ func NewList(key string) (uint, error) {
 		return 0, errors.New("internal error")
 	}
 	return list.ID, nil
+}
+
+// Serialize list
+// List is self-serializable, which needn't additional serializer.
+// This function is for the compatibility of `Serializable` and consistency for the whole program.
+func (list List) Serialize() ListSerializer {
+	return ListSerializer(list)
 }
 
 // DeleteList deletes list by ID
@@ -170,7 +180,7 @@ func GetListNodes(listID uint, version uint, nextCursor string) ([]ListNode, cur
 	// 	WHERE list_nodes.list_id = ? AND list_nodes.version = ?
 	// `
 	stmt := db.GormDB().
-		Select([]string{"list_nodes.node_order"}).
+		Select([]string{"list_nodes.node_order", "list_nodes.id"}).
 		InnerJoins("Article", db.GormDB().Select([]string{"id", "title", "content"})).
 		Where("list_id = ?", listID).Where("version = ?", version)
 	result, cursor, err := pg.Paginate(stmt, &nodes)
@@ -192,6 +202,7 @@ func createListNodePaginator(
 ) *paginator.Paginator {
 	opts := []paginator.Option{
 		&paginator.Config{
+			// Keys: []string{"ID"},
 			Keys:  []string{"NodeOrder", "ID"},
 			Limit: 10,
 			Order: order,

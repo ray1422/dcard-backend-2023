@@ -2,35 +2,43 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/ray1422/dcard-backend-2023/controller/pb"
 	"github.com/ray1422/dcard-backend-2023/model"
-	"github.com/ray1422/dcard-backend-2023/utils"
 	"github.com/ray1422/dcard-backend-2023/utils/db"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TestCreateAndSetList this function shows the use case of the APIs for the algorithm updating the list.
 // First, It creates a list, then adds items to the list, updates the list version, and finally deletes the expired data.
+
 func TestCreateAndSetList(t *testing.T) {
 	var myListVersion uint32 = uint32(time.Now().Unix() & 0xffffffff)
-	lst, err := net.Listen("tcp", utils.Getenv("GRPC_ADDR", "localhost:3000"))
+	lst := bufconn.Listen(0xfffff + 1)
+	bufDialer := func(context.Context, string) (net.Conn, error) {
+		return lst.Dial()
+	}
 	go func() {
-		err = listenGRPC(lst)
+		err := listenGRPC(lst)
 		assert.Nil(t, err)
 	}()
-	conn, err := grpc.Dial(utils.Getenv("GRPC_ADDR", "localhost:3000"), grpc.WithInsecure())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	assert.Nil(t, err)
 	defer conn.Close()
 	client := pb.NewListServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+
 	reply, err := client.CreateList(ctx, &pb.CreateListRequest{ListKey: "yet-another-asdf"})
+	assert.Nil(t, err)
+	fmt.Println(err)
 	assert.Equal(t, reply.Status, pb.CreateListReply_OK)
 	listID := reply.ListId
 	reply, err = client.CreateList(ctx, &pb.CreateListRequest{ListKey: "yet-another-asdf"})

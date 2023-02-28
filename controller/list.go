@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// listHandler handles /list/<id>/<version>?next=[cursor]
+// listHandler handles /list/<id>/<version>?cursor=[cursor]
 func listHandler(c *gin.Context) {
 	listIDStr := c.Param("id")
 	listID, err := strconv.Atoi(listIDStr)
@@ -25,7 +25,7 @@ func listHandler(c *gin.Context) {
 		c.Status(400)
 		return
 	}
-	cursorStr := c.Query("next")
+	cursorStr := c.Query("cursor")
 	listNodes, cursor, err := model.GetListNodes(uint(listID), uint(version), cursorStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

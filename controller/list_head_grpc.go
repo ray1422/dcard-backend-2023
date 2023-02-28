@@ -11,6 +11,7 @@ import (
 
 // Head is actually FindListByKey
 func (ListGRPCServer) Head(ctx context.Context, req *pb.HeadRequest) (*pb.HeadReply, error) {
+	// TODO write test
 	if req == nil {
 		return nil, errors.New("req shouldn't be nil")
 	}

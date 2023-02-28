@@ -9,7 +9,8 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// headHandler returns the head of list /list/<id>
+// headHandler returns the head of list /list/<key>.
+// due to the conflicts of the routes, the param is named `id` but it's typed string and should pass the `key` of the list to it.
 func headHandler(c *gin.Context) {
 	listKey, exists := c.Params.Get("id")
 	if !exists {
@@ -27,5 +28,5 @@ func headHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, head)
+	c.JSON(200, head.Serialize())
 }
