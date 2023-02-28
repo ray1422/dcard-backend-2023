@@ -124,14 +124,11 @@ func TestListRESTful(t *testing.T) {
 			req, _ := http.NewRequest("GET", fmt.Sprintf("/list/%d/%d?cursor=%s", listID, myVersion, cursor), nil)
 			r.ServeHTTP(w, req)
 			assert.Equal(t, http.StatusOK, w.Code)
-			ret := model.CursorPagedSerializer{}
+			ret := model.CursorPagedSerializer[model.ArticleSerializer]{}
 			json.Unmarshal(w.Body.Bytes(), &ret)
 			{
 				cursor = ret.Next
-				for _, item := range ret.Items {
-					jsonBody, _ := json.Marshal(item)
-					article := &model.ArticleSerializer{}
-					json.Unmarshal(jsonBody, &article)
+				for _, article := range ret.Items {
 					assert.NotContains(t, article.Title, "not here")
 					// fmt.Printf("Title: %s\n", article.Title)
 					assert.Equalf(t, fmt.Sprintf("Title_%d", orderTableReverse[cnt]), article.Title, "cnt=%d", cnt)

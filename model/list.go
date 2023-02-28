@@ -22,15 +22,15 @@ type Serializable[t any] interface {
 }
 
 // CursorPagedSerializer is a generic serializer for cursor paged lis
-type CursorPagedSerializer struct {
-	Items []any  `json:"items"`
+type CursorPagedSerializer[t any] struct {
+	Items []t    `json:"items"`
 	Next  string `json:"next,omitempty"`
 	Prev  string `json:"prev,omitempty"`
 }
 
 // SerializeCursorPagedItems serializes items.
-func SerializeCursorPagedItems[t any, u Serializable[t]](items []u, cursor cursor.Cursor) (ret CursorPagedSerializer) {
-	ret.Items = utils.Map(func(v u) any {
+func SerializeCursorPagedItems[t any, u Serializable[t]](items []u, cursor cursor.Cursor) (ret CursorPagedSerializer[t]) {
+	ret.Items = utils.Map(func(v u) t {
 		return v.Serialize()
 	}, items)
 
