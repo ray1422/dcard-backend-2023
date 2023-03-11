@@ -1,6 +1,19 @@
 # Dcard Backend Intern 2023 Assignment
 本系統旨在提供一個通用的列表系統，使得各種推薦系統可以方便的呼叫這個系統儲存以及瀏覽排序結果。
-
+## 測試環境
+Arch Linux 6.1.2-arch1-1
+## 使用方法
+### 安裝
+安裝套件以及 ProtoBuf 請參考 `make help`
+### 環境變數
+將 `.env.example` 複製到 `.env`。從 `.env` 載入環境變數請使用以下指令：
+```bash
+source env.sh
+```
+### 測試
+```bash
+make test
+```
 ## APIs
 ### 查詢用 API
 #### `GET /list/:key`
